@@ -1,2 +1,2 @@
 # freezer-alarm
-Raspberry Pi based monitor to monitor freezer and raise alarm if door left open
+Raspberry Pi based audio monitor to listen for freezer alarm and trigger a warning message on home hi-fi if door left open.
