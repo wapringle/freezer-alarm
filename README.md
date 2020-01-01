@@ -9,6 +9,7 @@ Requires
 Two scripts are included. 
 - checkFreezer.py to detect the freezer alarm has gone off.
 - raiseAlarm.py to send warning message to domestic radio.
+
 Plus supporting files
 - apa102.py driver module for APA102 LEDs
 - freezer.mp3 "Warning Freezer Door Open" message 
