@@ -2,6 +2,8 @@
 #https://www.raspberrypi.org/forums/viewtopic.php?t=35838&p=454041
 # 8 bar Audio equaliser using MCP2307
 
+training = False
+
 """
 MIT License
 
@@ -30,7 +32,8 @@ import smbus
 from struct import unpack
 import numpy as np
 import subprocess,time
-import atexit
+import atexit,os,signal
+import argparse
 
 import apa102  # for LED strip
 
@@ -42,7 +45,7 @@ def find_maximum(data,target=0,triggerdelta=0):
     fourier=np.fft.rfft(data)
     fourier=np.abs(fourier)
     maxpos=fourier.argmax()
-    return (maxpos,fourier[maxpos],np.mean(fourier[target-triggerdelta:target+triggerdelta]))
+    return (maxpos,fourier[maxpos],fourier[target] if triggerdelta==0 else np.mean(fourier[target-triggerdelta:target+triggerdelta]),np.mean(fourier))
 #
 # commands specific to the apa102
 #
@@ -75,15 +78,21 @@ atexit.register(goodbye)
 #
 # Alarm on/off state changes
 #
+pid=0
 def alarmOn():
     #print("ON")
+    global pid
     pixels.red()
-    pid=subprocess.Popen(['/usr/bin/python','./raiseAlarm.py']).pid
+    if not training:
+        pid=subprocess.Popen(['/usr/bin/python','./raiseAlarm.py']).pid
     #print("Pid = %d" % pid)
     
 def alarmOff():
+    global pid
     pixels.green()
-    
+    if pid:
+        os.kill(pid,signal.SIGTERM)
+        pid=0
     #print("OFF")
     
 class AlarmStatus():
@@ -103,9 +112,9 @@ class AlarmStatus():
         #
         self.onstep=20
         self.offstep=1
-        self.upperLimit=300
+        self.upperLimit=400
         self.lowerLimit=0
-        self.triggerdelta=4
+        self.triggerdelta=1
 
         self.count=0
         self.state=self.off
@@ -147,18 +156,22 @@ class AlarmStatus():
         return self.countingdown
     
     def monitor(self,data):
-        global timestart
+        global timestart,training
         #
         # return loudest frequency, it's value and the value round the trigger frequency
         #
-        maxpos,value,targetval=find_maximum(data, self.triggerpos,self.triggerdelta)
+        maxpos,value,targetval,mean=find_maximum(data, self.triggerpos,self.triggerdelta)
         #
         # trigger detected if trigger frequency over the threshold and it's the loudest.
         # Feel free to try other trigger algorithms
         #
-        trigger=targetval > self.triggerthreshold and (maxpos > self.triggerpos - self.triggerdelta and maxpos < self.triggerpos + self.triggerdelta ) 
-        if trigger:
-            print("time %s maxpos %4d val %6.0f target %6.0f count %2d" % (time.strftime("%d %b %Y %H:%M:%S", time.gmtime()),maxpos,value, targetval,self.count))
+        trigger=targetval > self.triggerthreshold # and (maxpos > self.triggerpos - self.triggerdelta and maxpos < self.triggerpos + self.triggerdelta ) 
+        
+        if training and maxpos>10:
+            print("peak frequency %4d trigger level %6d triggered? %s" % (maxpos, targetval/1000,"True" if trigger else "False"))
+            
+        if trigger and not training:
+            print("time %s peak frequency %4d level %6d trigger level %6d count %2d" % (time.strftime("%d %b %Y %H:%M:%S", time.gmtime()),maxpos,value/1000, targetval/1000,self.count))
         self.state=self.state(trigger)
             
                 
@@ -176,10 +189,16 @@ data_in.setrate(sample_rate)
 data_in.setformat(aa.PCM_FORMAT_S16_LE)
 data_in.setperiodsize(chunk)
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-t','--training',action='store_true', help='training')
+parser.add_argument('--trigger', default=646, type=int, help='trigger frequency')
+parser.add_argument('--threshold', default=80000.0, type=float, help='trigger threshold')
 
-alarm=AlarmStatus(646,80000.0) 
-# trigger frequency of 646 and alarm threshold of 80000
-# These figures determined by trial and error
+args = parser.parse_args()
+training=args.training
+alarm=AlarmStatus(args.trigger,args.threshold * 1000) 
+#
+# These figures determined by training option
 #
 pixels.green()
 print("Ready")
@@ -203,7 +222,7 @@ while True:
                 #
                 alarm.monitor(data)
                 
-        except Exception, e:
+        except Exception as e:
             print(e.message)
             raise e
     time.sleep(0.001)

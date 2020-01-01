@@ -59,8 +59,8 @@ def soapcall(action,extras="",service="AVTransport"):
     try:
         response=urllib2.urlopen(request)
         return response.read()
-    except urllib2.HTTPError,e:
-        print action,e.message 
+    except urllib2.HTTPError as e:
+        print(action,e.message) 
         sys.exit(1)
 
 #
