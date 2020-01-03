@@ -18,7 +18,7 @@ Installation
 - raspian distro (or later)
 - Seeed ReSpeaker 2-Mics Pi HAT drivers
 - $ sudo apt-get install libasound-dev
-- $ pip install alsaaudio
+- $ pip install pyalsaaudio
 
 Updating to python3
 The software runs on python2, standard with the raspian distro. To upgrade to python3 do
