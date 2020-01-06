@@ -13,3 +13,14 @@ Two scripts are included.
 Plus supporting files
 - apa102.py driver module for APA102 LEDs
 - freezer.mp3 "Warning Freezer Door Open" message 
+
+Installation
+- raspian distro (or later)
+- Seeed ReSpeaker 2-Mics Pi HAT drivers
+- $ sudo apt-get install libasound-dev
+- $ pip install pyalsaaudio
+
+Updating to python3
+The software runs on python2, standard with the raspian distro. To upgrade to python3 do
+- 2to3 -w checkFreezer.py raiseAlarm.py
+- $ python3 -m pip install pyalsaaudio
